@@ -1,0 +1,9 @@
+name: peony-bank
+main: Hero
+scripting: wasm
+# the view model string the native previewer reads for the pointer cursor (hand over Replay)
+cursor:
+  property: cursor
+logs:
+  file: build/rive.log
+  problems: build/problems.log
