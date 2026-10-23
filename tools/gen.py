@@ -119,12 +119,6 @@ for n, t, d in [
     ("range", "number", 0),
     ("lineWidth", "number", 1.25),
     ("motion", "number", 1),
-    # start-up splash: the animated Rive wordmark on black, then the black lifts off the scene.
-    # world.as drives showLogo (true plays the wordmark In, false plays Out) and splashFade
-    # (opacity of the black). splash = 0 skips it.
-    ("splash", "number", 1),
-    ("showLogo", "bool", True),
-    ("splashFade", "number", 1),
     # fired by a click on the Replay button; world.as listens and replays the 3D entrance
     ("replay", "trigger", 0),
 ]:
@@ -679,8 +673,6 @@ def build_screen():
 
 
 # ---------------------------------------------------------------- Hero artboard
-# ids in logo.rml (the animated Rive wordmark, shared with the other Rive CLI demos)
-LOGO_AB, LOGO_VM, LOGO_SHOW_PROP, LOGO_SM = "90:547", "90:470", "90:473", "90:1003"
 
 def build_hero(screen_ab_id):
     world_script = SCRIPTS["world"]
@@ -689,7 +681,6 @@ def build_hero(screen_ab_id):
            E("ScriptInputNumber", bind("lineWidth", 243), propertyValue=1.25, name="lineWidth"),
            E("ScriptInputNumber", bind("motion", 243), propertyValue=1, name="motion"),
            E("ScriptInputNumber", propertyValue=1, name="intro"),
-           E("ScriptInputNumber", bind("splash", 243), propertyValue=1, name="splash"),
            E("FocusData"),   # lets the script receive keyboardEvent (R = replay)
            scriptAssetId=world_script, name="Vector 3D World", id=nid())
     # controls hint, bottom centre (stacked over the 3D; first sibling draws on top)
@@ -716,19 +707,7 @@ def build_hero(screen_ab_id):
                    dir="row", align="center", gap=6),
                ws="fill", hs="fill", align="bottomCenter", pad=(0, 0, 14, 0), opacity=0.75)
     stage = box("Stage", sl, ws="fill", hs="fill")
-    # splash: black over everything, the Rive wordmark (logo.rml, NuRiveWordmark01) in the middle.
-    # Its own state machine plays In while showLogo is true and Out when it turns false.
-    logo = E("NestedArtboardLeaf",
-             E("ViewModelInstance",
-               E("ViewModelInstanceBoolean", bind("showLogo", 593), propertyValue=True,
-                 viewModelPropertyId=LOGO_SHOW_PROP),
-               viewModelId=LOGO_VM, exports=True, name="Logo Instance", id=nid()),
-             E("NestedStateMachine", animationId=LOGO_SM, name="Logo SM", id=nid()),
-             artboardId=LOGO_AB, isStateful=True, fit="contain", name="Rive Wordmark", id=nid())
-    splash = box("Splash", box("Logo Slot", logo, w=560, h=280, ws="fixed", hs="fixed"),
-                 ws="fill", hs="fill", align="center", fill=argb("#000000"))
-    splash.add(bind("splashFade", 18))
-    root = box("Root", splash, hint, stage, ws="fill", hs="fill", fill=argb(LIME), extra={"layoutTypeValue": "stack"})
+    root = box("Root", hint, stage, ws="fill", hs="fill", fill=argb(LIME), extra={"layoutTypeValue": "stack"})
     s, sid = style()
     sm_id = nid()
     ab = E("Artboard", s, root, name="Hero", id=nid(), width=1200, height=630, styleId=sid,

@@ -8,7 +8,7 @@
 import { Layout, Context } from "rive/host";
 import { Renderer } from "rive/renderer";
 import { Artboard } from "rive/artboard";
-import { ViewModel, PropertyBoolean, PropertyNumber } from "rive/data";
+import { ViewModel } from "rive/data";
 import { Canvas } from "rive/canvas";
 import { PointerEvent, KeyboardEvent } from "rive/events";
 import { Image, ImageSampler, ImageWrap, ImageFilter } from "rive/image";
@@ -45,12 +45,6 @@ const AUTHOR_ASPECT: f64 = 1.1;
 
 // R replays the load animation
 const KEY_R: f64 = 82;
-
-// Splash timing (seconds): the wordmark plays In (~0.75 s) and holds, plays Out,
-// then the black fades while the 3D entrance starts underneath it.
-const SPLASH_OUT: f64 = 1.7;
-const SPLASH_LIFT: f64 = 2.25;
-const SPLASH_FADE: f64 = 0.8;
 
 function clamp(v: f64, lo: f64, hi: f64): f64 {
     return Math.min(Math.max(v, lo), hi);
@@ -171,14 +165,9 @@ export class World extends Layout {
     @input lineWidth: f64 = 1.3;
     @input motion: f64 = 1;
     @input intro: f64 = 1;
-    @input splash: f64 = 1;
 
     context: Context? = null;
     vm: ViewModel? = null;
-    showLogoProp: PropertyBoolean? = null;
-    splashFadeProp: PropertyNumber? = null;
-    splashT: f64 = 0;
-    splashPhase: i32 = 0; // 0 logo, 1 fade, 2 done
     scene: Scene? = null;
     objs: Array<Obj> = [];
     rootMats: Array<Mat4> = [];
@@ -682,10 +671,8 @@ export class World extends Layout {
         out[15] = 1;
     }
 
-    // ------------------------------------------------------------ view model + splash
-    // The Replay button fires the view model trigger `replay`; the splash is driven
-    // through `showLogo` (the wordmark plays In while true, Out once false) and
-    // `splashFade` (opacity of the black layer).
+    // ------------------------------------------------------------ view model
+    // The Replay button fires the view model trigger `replay`.
     hookViewModel(): void {
         let ctx = this.context;
         if (this.vm != null || ctx == null) {
@@ -696,63 +683,12 @@ export class World extends Layout {
             return;
         }
         this.vm = vm;
-        this.showLogoProp = vm.getBoolean("showLogo");
-        this.splashFadeProp = vm.getNumber("splashFade");
         let trig = vm.getTrigger("replay");
         if (trig != null) {
             trig.addListenerWith(this, (self: World): void => {
-                if (self.splashPhase >= 2) {
-                    self.replay();
-                }
+                self.replay();
             });
         }
-    }
-
-    setShowLogo(show: bool): void {
-        let b = this.showLogoProp;
-        if (b != null && b.value != show) {
-            b.value = show;
-        }
-    }
-
-    setSplashFade(fade: f64): void {
-        let f = this.splashFadeProp;
-        if (f != null && f.value != fade) {
-            f.value = fade;
-        }
-    }
-
-    // Returns true while the scene clock should stay frozen (wordmark on black).
-    stepSplash(d: f64): bool {
-        if (this.splashPhase >= 2) {
-            return false;
-        }
-        if (this.splash < 0.5) {
-            this.splashPhase = 2;
-            this.setShowLogo(false);
-            this.setSplashFade(0);
-            return false;
-        }
-        this.splashT += d;
-        let t = this.splashT;
-        if (this.splashPhase == 0) {
-            if (t >= SPLASH_OUT) {
-                this.setShowLogo(false);
-            }
-            if (t >= SPLASH_LIFT) {
-                this.splashPhase = 1;
-                this.replay(); // the entrance (and the phone UI's own intro) start from zero now
-                return false;
-            }
-            return true;
-        }
-        let f = 1 - clamp((t - SPLASH_LIFT) / SPLASH_FADE, 0, 1);
-        f = f * f * (3 - 2 * f);
-        this.setSplashFade(f);
-        if (f <= 0) {
-            this.splashPhase = 2;
-        }
-        return false;
     }
 
     // R (or the Replay button) replays the load animation: restarts the 3D entrance
@@ -778,9 +714,6 @@ export class World extends Layout {
         this.hookViewModel();
         if (this.inst == null) {
             this.instanceScreen();
-        }
-        if (this.stepSplash(d)) {
-            return true;
         }
         this.time += d;
         let k = 1 - Math.exp(-d * 4.0);
@@ -958,9 +891,7 @@ export class World extends Layout {
 
     override keyboardEvent(event: KeyboardEvent): bool {
         if (event.phase == "down" && event.key == KEY_R && !(event.control || event.meta || event.alt)) {
-            if (this.splashPhase >= 2) {
-                this.replay();
-            }
+            this.replay();
             return true;
         }
         return false;
